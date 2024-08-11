@@ -1,0 +1,75 @@
+#!/bin/env python3
+"""
+A simple script to run h5repack on an input file.
+
+Usage:
+    h5opt input.hdf
+"""
+
+import subprocess
+import os
+
+if __name__ == "__main__":
+    # check if h5repack is installed, don't print output
+    c = subprocess.call(["h5repack", "--help"], stdout=subprocess.DEVNULL)
+
+    if c != 0:
+        print("h5repack is not installed/available")
+        exit(1)
+
+    # get input file
+    import sys
+
+    if len(sys.argv) < 2:
+        print("h5opt: A simple script to run h5repack on an input file.")
+        print("Usage: h5opt input.hdf")
+        exit(1)
+
+    if len(sys.argv) > 2:
+        print("Too many arguments")
+        print("Usage: h5opt input.hdf")
+        exit(1)
+
+    input_file = sys.argv[1]
+
+    # check if input file exists
+    if not os.path.isfile(input_file):
+        print("Input file does not exist")
+        exit(1)
+
+    # do we have write permission
+    if not os.access(input_file, os.W_OK):
+        print("No write permission for input file")
+        exit(1)
+
+    # get size of input file before repacking
+    size_before = os.path.getsize(input_file)
+
+    # create temp file
+    temp_file = input_file + ".tmp"
+
+    # run h5repack
+    result = subprocess.run(["h5repack", input_file, temp_file], capture_output=True, text=True)
+
+    if result.returncode != 0:
+        print("h5repack failed:", result.stderr)
+        exit(1)
+    # overwrite original with temp
+
+    try:
+        os.remove(input_file)
+    except Exception as e:
+        print("Error removing original file:", e)
+        exit(1)
+    try:
+        os.rename(temp_file, input_file)
+    except Exception as e:
+        print("Error renaming temp file:", e)
+        exit(1)
+
+    # get size of file after repacking
+    size_after = os.path.getsize(input_file)
+
+    print(
+        f"Done. Input file size: {size_before/1024/1024:.2f} Mb, Output file size: {size_after/1024/1024:.2f} Mb, {size_after/size_before*100:.2f}% of original size"
+    )
